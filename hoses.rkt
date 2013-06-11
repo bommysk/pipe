@@ -20,6 +20,7 @@
 
 (provide:
  [hose-index      (All (O A) (Index -> (Hose O (Pair O Index) A)))]
+ [hose-split      (All (O I A) (O -> (Listof I)) -> (Hose O (Listof I) A))]
  [hose-for-each   (All (D A) ((D -> Void) -> (Hose D D A)))]
  [hose-map        (All (O I A) ((O -> (Option I)) -> (Hose O I A)))]
  [hose-flatmap    (All (O I A) ((O -> (Option I)) -> (Hose (Listof O) I A)))]
@@ -37,6 +38,27 @@
 	  drain
 	  Hose
 	  Tank Stream Done Continue))
+
+
+(: hose-split (All (O I A) (O -> (Listof I)) -> (Hose O (Listof I) A)))
+(define (hose-split splitter)
+  (λ: ((inner : (Tank (Listof I) A)))
+
+      (: step ((Tank (Listof I) A) -> ((Stream O) -> (Tank O A))))
+      (define (step inner)
+	(λ: ((elem : (Stream O)))
+	    (cond
+	     [(eq? elem 'Nothing)
+	      (Continue (step inner))]
+	     [(eq? elem 'EOS)
+	      (Done 'EOS (drain inner))]
+	     [else (match inner
+			  [(Done _ _)
+			   (Done elem (drain inner))]
+			  [(Continue istep)
+			   (Continue (step (istep (splitter elem))))])])))
+
+      (Continue (step inner))))
 
 (: hose-for-each (All (D A) ((D -> Void) -> (Hose D D A))))
 (define (hose-for-each for-fn)
@@ -267,31 +289,31 @@
 
 ;;       (: iter-elems ((Tank I A) O -> (Tank I A)))
 ;;       (define (iter-elems rec-iter elem)
-;; 	(let: loop : (Tank I A) ((iter : (Tank I A) rec-iter)
-;; 				     (elems : (Listof I) (f-cvt elem)))
-;; 	      (if (null? elems)
-;; 		  iter
-;; 		  (match iter
-;; 			 [(Done _ _) iter]
-;; 			 [(Continue istep)
-;; 			  (loop (istep (car elems)) (cdr elems))]))))
+;;	(let: loop : (Tank I A) ((iter : (Tank I A) rec-iter)
+;;				     (elems : (Listof I) (f-cvt elem)))
+;;	      (if (null? elems)
+;;		  iter
+;;		  (match iter
+;;			 [(Done _ _) iter]
+;;			 [(Continue istep)
+;;			  (loop (istep (car elems)) (cdr elems))]))))
 
 ;;       (: step ((Tank I A) -> ((Stream O) -> (Tank O (Tank I A)))))
 ;;       (define (step inner)
-;; 	(λ: ((elem : (Stream O)))
-;; 	    (cond
-;; 	     ((eq? elem 'Nothing)
-;; 	      (Continue (step inner)))
-;; 	     ((eq? elem 'EOS)
-;; 	      (Done 'EOS inner))
-;; 	     (else (match inner
-;; 			  [(Done _ _ ) (Done elem inner)]
-;; 			  [(Continue _)
-;; 			   (let ((rec-iter (iter-elems inner elem)))
-;; 			     (match rec-iter
-;; 				    [(Done _ _) (Done elem rec-iter)]
-;; 				    [(Continue _)
-;; 				     (Continue (step rec-iter))]))])))))
+;;	(λ: ((elem : (Stream O)))
+;;	    (cond
+;;	     ((eq? elem 'Nothing)
+;;	      (Continue (step inner)))
+;;	     ((eq? elem 'EOS)
+;;	      (Done 'EOS inner))
+;;	     (else (match inner
+;;			  [(Done _ _ ) (Done elem inner)]
+;;			  [(Continue _)
+;;			   (let ((rec-iter (iter-elems inner elem)))
+;;			     (match rec-iter
+;;				    [(Done _ _) (Done elem rec-iter)]
+;;				    [(Continue _)
+;;				     (Continue (step rec-iter))]))])))))
 
 ;;       (Continue (step inner))))
 
