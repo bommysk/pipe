@@ -20,9 +20,9 @@
 
 (require
  (only-in "types.rkt"
-	  Hose Tank)
- (only-in "hoses.rkt"
-	  hose-groupby hose-flatmap)
+	  Pipe Tank)
+ (only-in "pipes.rkt"
+	  pipe-groupby pipe-flatmap)
  (only-in "tanks.rkt"
 	  list-tank))
 
@@ -31,10 +31,10 @@
 
 (: reduce (All (D E) ((D D -> Boolean) (D -> (Option E)) -> (Tank D (Listof E)))))
 (define (reduce is-same? reduce-fn)
-  (define: groupbyT : (Hose D (Listof D) (Listof E))
-    (hose-groupby is-same?))
-  (define: mergeT : (Hose (Listof D) E (Listof E))
-    (hose-flatmap reduce-fn))
+  (define: groupbyT : (Pipe D (Listof D) (Listof E))
+    (pipe-groupby is-same?))
+  (define: mergeT : (Pipe (Listof D) E (Listof E))
+    (pipe-flatmap reduce-fn))
   (define: sink : (Tank E (Listof E))
     (list-tank))
   (define: listtank : (Tank D (Listof E))

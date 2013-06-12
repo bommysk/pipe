@@ -21,7 +21,7 @@
 (provide
  dp~ drain drain~ 
  iseq 
- Pump Hose Tank Stream
+ Pump Pipe Tank Stream
  (struct-out Continue)
  (struct-out Done)
  eseq)
@@ -68,4 +68,4 @@
 (define (eseq e1 e2)
   (λ (iter) (e2 (e1 iter))))
 
-(define-type (Hose O I A) ((Tank I A) -> (Tank O A)))
+(define-type (Pipe O I A) ((Tank I A) -> (Tank O A)))
