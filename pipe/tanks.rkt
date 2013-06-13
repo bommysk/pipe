@@ -20,7 +20,7 @@
 
 (provide:
  [show         (All (D) (Output-Port -> (Tank D Void)))]
- [print        (All (D) (Output-Port -> (Tank D Void)))]
+ [print        (All (D) ((D -> Void) -> (Tank D Void)))]
  [head         (All (D) (-> (Tank D (Option D))))]
  [head-n       (All (D) (Integer -> (Tank D (Listof D))))]
  [drop         (All (D) Integer -> (Tank D Void))]
@@ -28,7 +28,7 @@
  [sum          (-> (Tank Number Number))]
  [sum-r        (-> (Tank Real Real))]
  [sum-i        (-> (Tank Integer Integer))]
- [sum1-i       (-> (Tank Integer Integer))] 
+ [sum1-i       (-> (Tank Integer Integer))]
  [dev/null     (All (D) (-> (Tank D Void)))]
  [and-iteratee (All (D) ((D -> Boolean) -> (Tank D Boolean)))]
  [set-tank     (All (D) (-> (Tank D (Setof D))))]
@@ -36,7 +36,7 @@
  [vector-tank  (All (D) ((Vectorof D) -> (Tank D (Vectorof D))))]
  [hash-tank    (All (K V) (-> (Tank (Pair K V) (HashTable K V))))])
 
-(require  
+(require
  racket/match
  (only-in racket/set
 	  set set-add)
@@ -57,7 +57,7 @@
 (: drop (All (D) Integer -> (Tank D Void)))
 (define (drop n)
   (: step (-> ((Stream D) -> (Tank D Void))))
-  (define (step) 
+  (define (step)
     (λ: ((str : (Stream D)))
 	(match str
 	       ['Nothing  (Continue (step))]
@@ -80,10 +80,10 @@
 
 (: head-n (All (D) (Integer -> (Tank D (Listof D)))))
 (define (head-n n)
-  
+
   (: head-n-accum (Integer (Listof D) -> (Tank D (Listof D))))
   (define (head-n-accum n accum)
-    
+
     (: step (Integer (Listof D) -> ((Stream D) -> (Tank D (Listof D)))))
     (define (step n accum)
       (λ: ((s : (Stream D)))
@@ -91,31 +91,31 @@
 	   [(eq? s 'Nothing) (Continue  (step n accum))]
 	   [(eq? s 'EOS)     (Done 'EOS (reverse accum))]
 	   [else             (head-n-accum (sub1 n) (cons s accum))])))
-    
+
     (if (zero? n)
-        (Done 'Nothing (reverse accum))
-        (Continue (step n accum))))
-  
+	(Done 'Nothing (reverse accum))
+	(Continue (step n accum))))
+
   (head-n-accum n '()))
 
 (: set-tank (All (D) (-> (Tank D (Setof D)))))
 (define (set-tank)
-  
+
   (: step ((Setof D) -> ((Stream D) -> (Tank D (Setof D)))))
   (define (step the-set)
     (λ: ((datum : (Stream D)))
-	(cond 
+	(cond
 	 [(eq? datum 'Nothing)
 	  (Continue (step the-set))]
 	 [(eq? datum 'EOS)
 	  (Done 'EOS the-set)]
 	 [else (Continue (step (set-add the-set datum)))])))
-  
+
   (Continue (step (set))))
 
 (: list-tank (All (D) (-> (Tank D (Listof D)))))
 (define (list-tank)
-  
+
   (: step ((Listof D) -> ((Stream D) -> (Tank D (Listof D)))))
   (define (step lst)
     (λ: ((s : (Stream D)))
@@ -125,14 +125,14 @@
 	 [(eq? s 'EOS)
 	  (Done 'EOS (reverse lst))]
 	 [else (Continue (step (cons s lst)))])))
-  
+
   (Continue (step '())))
 
 (: hash-tank (All (K V) (-> (Tank (Pair K V) (HashTable K V)))))
 (define (hash-tank)
-  
+
   (define: hmap : (HashTable K V) (make-hash))
-  
+
   (: step ((Stream (Pair K V)) -> (Tank (Pair K V) (HashTable K V))))
   (define step
     (λ: ((s : (Stream (Pair K V))))
@@ -144,7 +144,7 @@
 	 [else (begin
 		 (hash-set! hmap (car s) (cdr s))
 		 (Continue step ))])))
-  
+
   (Continue step))
 
 
@@ -161,11 +161,11 @@
 	  (Continue (step idx))]
 	 [(eq? s 'EOS)
 	  (Done 'EOS vect)]
-	 (else 
+	 (else
 	  (if (>= idx vect-len)
 	      (Done s vect)
 	      (begin
-		(vector-set! vect idx s)		 
+		(vector-set! vect idx s)
 		(Continue (step (assert (add1 idx) index?)))))))))
 
   (Continue (step 0)))
@@ -175,14 +175,14 @@
 ;; All datum elements satisfy the given predicate
 (: and-iteratee (All (D) ((D -> Boolean) -> (Tank D Boolean))))
 (define (and-iteratee pred)
-  
+
   (: step ((Stream D) -> (Tank D Boolean)))
   (define (step input)
     (cond
      [(eq? input 'Nothing)  (Continue step)]
      [(eq? input 'EOS)      (Done 'EOS #t)]
      [else (if (pred input) (Continue step) (Done input #f))]))
-  
+
   (Continue step))
 
 (: sum (-> (Tank Number Number)))
@@ -222,20 +222,20 @@
 ;; Summing 1 million Ints, 424ms sum, 248ms sum1
 (: sum1-i (-> (Tank Integer Integer)))
 (define (sum1-i)
-  
+
   (: total Integer)
   (define total 0)
-  
-  (: step ((Stream Integer) -> 
+
+  (: step ((Stream Integer) ->
 	   (Tank Integer Integer)))
   (define (step str)
     (cond
-     ([number? str] 
+     ([number? str]
       (set! total (+ str total))
       (Continue step))
      [(eq? str 'Nothing) (Continue step)]
      [(eq? str 'EOS) (Done 'EOS total)]))
-  
+
   (Continue step))
 
 (: dev/null (All (D) (-> (Tank D Void))))
@@ -261,15 +261,17 @@
 			   (Continue step))))))
   (Continue step))
 
-(: print (All (D) (Output-Port -> (Tank D Void))))
-(define (print outp)
+(: print (All (D) ((D -> Void) -> (Tank D Void))))
+(define (print p-fn)
   (: step ((Stream D) -> (Tank D Void)))
   (define step
-    (λ: ((str : (Stream D)))
-	(match str
-	       ('Nothing (Continue step))
-	       ('EOS     (Done 'EOS (void)))
-	       (s        (begin
-			   (write s outp)
-			   (Continue step))))))
+    (λ: ((datum : (Stream D)))
+	(cond
+	 ((eq? datum 'Nothing)
+	  (Continue step))
+	 ((eq? datum 'EOS)
+	  (Done 'EOS (void)))
+	 (else (begin
+		 (p-fn datum)
+		 (Continue step))))))
   (Continue step))
