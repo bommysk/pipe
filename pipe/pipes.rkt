@@ -24,7 +24,8 @@
  [pipe-for-each   (All (D A) ((D -> Void) -> (Pipe D D A)))]
  [pipe-map        (All (O I A) ((O -> (Option I)) -> (Pipe O I A)))]
  [pipe-flatmap    (All (O I A) ((O -> (Option I)) -> (Pipe (Listof O) I A)))]
- [pipe-groupby    (All (D A) ((D D -> Boolean) -> (Pipe D (Listof D) A)))]
+ [pipe-group      (All (D A) ((D D -> Boolean) -> (Pipe D (Listof D) A)))]
+ [pipe-ungroup    (All (D A) (-> (Pipe (Listof D) D A)))]
  [pipe-unique     (All (D A) (D -> (Pipe D D A)))]
  [pipe-filter     (All (D A) ((D -> Boolean) -> (Pipe D D A)))]
  [pipe-list-count (All (D A) -> (Pipe (Listof D) (Listof (Pair D Natural)) A))]
@@ -37,8 +38,16 @@
  (only-in "types.rkt"
 	  drain
 	  Pipe
-	  Tank Stream Done Continue))
+	  Tank Stream Done Done? Continue))
 
+;; (: pipe-label (All (O K V A) (O -> (Pair K V)) -> (Pipe O (Pair K V) A)))
+;; (define (pipe-label kv-fn)
+;;   (λ: ((inner : (Tank (Pair K V) A)))
+
+;;       (: step ((Tank (Pair K V)) A))
+;;       )
+
+;; )
 
 (: pipe-split (All (O I A) (O -> (Listof I)) -> (Pipe O (Listof I) A)))
 (define (pipe-split splitter)
@@ -199,8 +208,33 @@
 
       (Continue (step inner))))
 
-(: pipe-groupby (All (D A) ((D D -> Boolean) -> (Pipe D (Listof D) A))))
-(define (pipe-groupby comparer)
+(: pipe-ungroup (All (D A) (-> (Pipe (Listof D) D A))))
+(define (pipe-ungroup)
+
+  (λ: ((inner : (Tank D A)))
+
+      (: step ((Tank D A) -> ((Stream (Listof D)) -> (Tank (Listof D) A))))
+      (define (step inner)
+	(λ: ((data : (Stream (Listof D))))
+	    (cond
+	     ((eq? data 'Nothing)
+	      (Continue (step inner)))
+	     ((eq? data 'EOS)
+	      (Done 'EOS (drain inner)))
+	     (else (let loop ((data data) (inner inner))
+		     (if (null? data)
+			 (Continue (step inner))
+			 (match inner
+				[(Done _ _)
+				 (Done data (drain inner))]
+				[(Continue istep)
+				 (loop (cdr data) (istep (car data)))])))))))
+
+      (Continue (step inner))))
+
+
+(: pipe-group (All (D A) ((D D -> Boolean) -> (Pipe D (Listof D) A))))
+(define (pipe-group comparer)
 
   (λ: ((inner : (Tank (Listof D) A)))
 
