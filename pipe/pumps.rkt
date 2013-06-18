@@ -22,6 +22,7 @@
  [pump/eos    (All (D A) (Pump D A))]
  [pump/list   (All (D A) (Listof D) -> (Pump D A))]
  [pump/vector (All (D A) (Vectorof D) -> (Pump D A))]
+ [pump/hash   (All (K V A) (HashTable K V) -> (Pump (Pair K V) A))]
  [pump/text-input-port     (All (A) (Input-Port -> (Pump String A)))]
  [pump/select-from-n-lists (All (D A) (Listof (Listof D)) (D D -> Boolean) -> (Pump D A))])
 
@@ -69,6 +70,21 @@
 		       [(Done _ _) iter]
 		       [(Continue k) (loop (add1 idx)
 					   (k (unsafe-vector-ref vect idx)))])))))
+
+(: pump/hash (All (K V A) (HashTable K V) -> (Pump (Pair K V) A)))
+(define (pump/hash hash)
+  (λ: ((tank : (Tank (Pair K V) A)))
+      (let: loop : (Tank (Pair K V) A)
+	    ((idx : (Option Integer) (hash-iterate-first hash))
+	     (tank : (Tank (Pair K V) A) tank))
+	    (if idx
+		(match tank
+		       [(Done _ _) tank]
+		       [(Continue k)
+			(loop (hash-iterate-next hash idx)
+			      (k (cons (hash-iterate-key hash idx)
+				       (hash-iterate-value hash idx))))])
+		tank))))
 
 (: pump/text-input-port (All (A) (Input-Port -> (Pump String A))))
 (define (pump/text-input-port inp)
