@@ -256,7 +256,8 @@
 			       (Continue (step (list datum) inner))
 			       (if (comparer datum (car accum))
 				   (Continue (step (cons datum accum) inner))
-				   (Continue (step (list datum) (inner-step accum)))))])))))
+				   (Continue (step (list datum) 
+						   (inner-step (reverse accum))))))])))))
 
       (Continue (step '() inner))))
 
