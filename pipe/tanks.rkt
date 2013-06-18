@@ -34,7 +34,8 @@
  [set-tank     (All (D) (-> (Tank D (Setof D))))]
  [list-tank    (All (D) (-> (Tank D (Listof D))))]
  [vector-tank  (All (D) ((Vectorof D) -> (Tank D (Vectorof D))))]
- [hash-tank    (All (K V) (-> (Tank (Pair K V) (HashTable K V))))])
+ [hash-tank    (All (K V) (-> (Tank (Pair K V) (HashTable K V))))]
+ [tank/counts (All (D) (-> (Tank D (HashTable D Integer))))])
 
 (require
  racket/match
@@ -147,6 +148,28 @@
 
   (Continue step))
 
+
+(: tank/counts (All (D) (-> (Tank D (HashTable D Integer)))))
+(define (tank/counts)
+
+  (define: datum-counts : (HashTable D Integer) (make-hash))
+
+  (: step ((Stream D) -> (Tank D (HashTable D Integer))))
+  (define step
+    (λ: ((datum : (Stream D)))
+	(cond
+	 [(eq? datum 'Nothing)
+	  (Continue step)]
+	 [(eq? datum 'EOS)
+	  (Done 'EOS datum-counts)]
+	 [else (begin
+		 (hash-update! datum-counts datum
+			       (λ: ((cnt : Integer))
+				   (add1 cnt))
+			       (λ: () 1))
+		 (Continue step))])))
+
+  (Continue step))
 
 (: vector-tank (All (D) ((Vectorof D) -> (Tank D (Vectorof D)))))
 (define (vector-tank vect)
