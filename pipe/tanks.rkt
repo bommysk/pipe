@@ -166,7 +166,7 @@
 		 (hash-update! datum-counts datum
 			       (λ: ((cnt : Integer))
 				   (add1 cnt))
-			       (λ: () 1))
+			       (λ: () 0))
 		 (Continue step))])))
 
   (Continue step))
